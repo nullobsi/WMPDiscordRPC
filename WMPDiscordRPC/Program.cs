@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
-using System.Timers;
 using System.Windows.Forms;
 using DiscordRPC;
 using DiscordRPC.Logging;
@@ -11,6 +7,59 @@ using DiscordRPC.Message;
 
 namespace WMPDiscordRPC
 {
+    public static class ThreadHelperClass
+    {
+        delegate void SetTextCallback(Control ctrl, string text);
+        delegate void SetValueCallback(ProgressBar ctrl, int value);
+        delegate void SetMaxCallback(ProgressBar ctrl, int value);
+        /// <summary>
+        /// Set text property of various controls
+        /// </summary>
+        /// <param name="form">The calling form</param>
+        /// <param name="ctrl"></param>
+        /// <param name="text"></param>
+        public static void SetText(this Control ctrl, string text)
+        {
+            // InvokeRequired required compares the thread ID of the 
+            // calling thread to the thread ID of the creating thread. 
+            // If these threads are different, it returns true. 
+            if (ctrl.InvokeRequired)
+            {
+                SetTextCallback d = new SetTextCallback(SetText);
+                ctrl.FindForm().Invoke(d, new object[] { ctrl, text });
+            }
+            else
+            {
+                ctrl.Text = text;
+            }
+        }
+
+        public static void SetValue(this ProgressBar ctrl, int value)
+        {
+            if (ctrl.InvokeRequired)
+            {
+                SetValueCallback d = new SetValueCallback(SetValue);
+                ctrl.FindForm().Invoke(d, new object[] { ctrl, value });
+            }
+            else
+            {
+                ctrl.Value = value;
+            }
+        }
+
+        public static void SetMax(this ProgressBar ctrl, int value)
+        {
+            if (ctrl.InvokeRequired)
+            {
+                SetMaxCallback d = new SetMaxCallback(SetMax);
+                ctrl.FindForm().Invoke(d, new object[] { ctrl, value });
+            }
+            else
+            {
+                ctrl.Maximum = value;
+            }
+        }
+    }
     static class Program
     {
         static MainForm form;
@@ -20,6 +69,7 @@ namespace WMPDiscordRPC
         private static int playerPosition;
         private static MediaItem currentTrack;
 
+        static bool isPlaying = false;
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -50,13 +100,16 @@ namespace WMPDiscordRPC
             try
             {
                 var currentMedia = form?.MediaPlayer?.Ctlcontrols?.currentItem;
-
                 if (currentMedia != null)
                 {
                     playerMedia = new MediaItem() { TrackName = currentMedia?.getItemInfo("Title"), AlbumName = currentMedia?.getItemInfo("Album"), ArtistName = currentMedia?.getItemInfo("Artist"), TrackLength = Convert.ToDouble(currentMedia?.duration) };
-
                     if (playerMedia.TrackName != null)
                     {
+                        if (playerPosition != Convert.ToInt32(form?.MediaPlayer?.Ctlcontrols?.currentPosition))
+                        {
+                            isPlaying = true;
+                        }
+                        else isPlaying = false;
                         playerPosition = Convert.ToInt32(form?.MediaPlayer?.Ctlcontrols?.currentPosition);
                     }
                 }
@@ -84,21 +137,32 @@ namespace WMPDiscordRPC
                     if (form != null)
                     {
                         Console.WriteLine("Windows Media Player Plugin checking media state...");
-                            MediaItem mediaDetail = await GetMediaDetail();
+                        MediaItem mediaDetail = await GetMediaDetail();
 
-                            if (mediaDetail != null && currentTrack?.TrackName != mediaDetail?.TrackName)
-                            {
-                                currentTrack = mediaDetail;
+                        if (mediaDetail != null && currentTrack?.TrackName != mediaDetail?.TrackName)
+                        {
 
-                                Console.WriteLine("Raising Track Change Method.");
+                            currentTrack = mediaDetail;
 
+                            Console.WriteLine("Raising Track Change Method.");
+
+                            if (isPlaying)
                                 DoPresenceChange(mediaDetail);
-                            }
-
-                            if (currentTrack != null)
-                            {
-                                Console.WriteLine($"Player position {playerPosition} of {currentTrack.TrackLength}.");
-                            }
+                        }
+                        if (currentTrack != null)
+                        {
+                            form.albumName = currentTrack.AlbumName;
+                            form.artistName = currentTrack.ArtistName;
+                            form.trackName = currentTrack.TrackName;
+                            form.endTime = (int)currentTrack.TrackLength;
+                            form.currTime = playerPosition;
+                        }
+                        if (!isPlaying)
+                            client.ClearPresence();
+                        if (currentTrack != null)
+                        {
+                            Console.WriteLine($"Player position {playerPosition} of {currentTrack.TrackLength}.");
+                        }
 
                         //Console.WriteLine("Windows Media Plugin checking media state complete.");
                     }
@@ -107,7 +171,7 @@ namespace WMPDiscordRPC
                 };
                 loopTimer.Start();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 loopTimer.Start();
             }

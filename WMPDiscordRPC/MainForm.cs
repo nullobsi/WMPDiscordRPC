@@ -42,9 +42,47 @@ namespace WMPDiscordRPC
         private void MainForm_Load(object sender, EventArgs e)
         {
             MediaPlayer = new RemotedWindowsMediaPlayer();
-            MediaPlayer.Dock = System.Windows.Forms.DockStyle.Fill;
             MediaPlayer.Size = new Size(0, 0);
             Controls.Add(MediaPlayer);
+            MediaPlayer.Size = new Size(0, 0);
+
+        }
+
+        private void ToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+        private void Label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        public string trackName { set {
+                TrackName.SetText(value);
+            } }
+        public string artistName { set { ArtistName.SetText(value); } }
+
+        public string albumName { set { AlbumName.SetText(value); } }
+
+        public int currTime { set
+            {
+
+                CurrentTime.SetText(SecondsToString(value));
+                MediaProgress.SetValue(value);
+            } }
+
+        public int endTime { set
+            {
+                MaxTime.SetText(SecondsToString(value));
+                MediaProgress.SetMax(value);
+            }
+        }
+
+        private string SecondsToString(int seconds)
+        {
+            var minutes = seconds / 60;
+            var second = seconds - (minutes * 60);
+            return minutes + ":" + second.ToString("D2");
         }
     }
 }
