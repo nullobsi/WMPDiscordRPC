@@ -78,7 +78,7 @@ namespace WMPDiscordRPC
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            client = new DiscordRpcClient("369641897377136641");
+            client = new DiscordRpcClient("833743269169987604");
             client.Logger = new ConsoleLogger() { Level = LogLevel.Warning };
             client.OnReady += Client_OnReady;
             client.Initialize();
